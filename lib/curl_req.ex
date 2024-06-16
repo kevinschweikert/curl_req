@@ -67,44 +67,39 @@ defmodule CurlReq do
         req
       end
 
-    cookies =
-      case Map.get(req.headers, "cookie") do
-        nil -> []
-        [cookies] -> ["-b", cookies]
-      end
-
     headers =
       req.headers
-      |> Enum.reject(fn {key, _val} -> key == "cookie" end)
-      |> Enum.flat_map(fn {key, value} ->
-        ["-H", "#{key}: #{value}"]
+      |> Enum.flat_map(fn
+        {"cookie", [cookies]} -> [cookie: cookies]
+        {key, value} -> [header: "#{key}: #{value}"]
       end)
 
     body =
       case req.body do
         nil -> []
-        body -> ["-d", body]
+        body -> [data: body]
       end
 
     redirect =
       case req.options do
-        %{redirect: true} -> ["-L"]
+        %{redirect: true} -> [location: true]
         _ -> []
       end
 
     method =
       case req.method do
-        nil -> ["-X", "GET"]
-        :head -> ["-I"]
-        m -> ["-X", String.upcase(to_string(m))]
+        nil -> [request: "GET"]
+        :head -> [head: true]
+        m -> [request: String.upcase(to_string(m))]
       end
 
     url = [to_string(req.url)]
 
-    CurlReq.Shell.cmd_to_string(
-      "curl",
-      headers ++ cookies ++ body ++ method ++ redirect ++ url
-    )
+    opts =
+      (headers ++ body ++ method ++ redirect)
+      |> OptionParser.to_argv(CurlReq.Macro.parse_opts())
+
+    CurlReq.Shell.cmd_to_string("curl", opts ++ url)
   end
 
   @doc """

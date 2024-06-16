@@ -3,6 +3,32 @@ defmodule CurlReq.Macro do
 
   # TODO: handle newlines
 
+  @parse_opts [
+    strict: [
+      header: :keep,
+      request: :string,
+      data: :keep,
+      cookie: :string,
+      head: :boolean,
+      form: :keep,
+      location: :boolean,
+      user: :string
+    ],
+    aliases: [
+      H: :header,
+      X: :request,
+      d: :data,
+      b: :cookie,
+      I: :head,
+      F: :form,
+      L: :location,
+      u: :user
+    ]
+  ]
+
+  @spec parse_opts() :: OptionParser.options()
+  def parse_opts, do: @parse_opts
+
   @spec parse(String.t()) :: Req.Request.t()
   def parse(command) do
     command =
@@ -13,28 +39,7 @@ defmodule CurlReq.Macro do
     {options, [url], _invalid} =
       command
       |> OptionParser.split()
-      |> OptionParser.parse(
-        strict: [
-          header: :keep,
-          request: :string,
-          data: :keep,
-          cookie: :string,
-          head: :boolean,
-          form: :keep,
-          location: :boolean,
-          user: :string
-        ],
-        aliases: [
-          H: :header,
-          X: :request,
-          d: :data,
-          b: :cookie,
-          I: :head,
-          F: :form,
-          L: :location,
-          u: :user
-        ]
-      )
+      |> OptionParser.parse(@parse_opts)
 
     url = String.trim(url)
 
