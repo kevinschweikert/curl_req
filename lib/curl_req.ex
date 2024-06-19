@@ -1,11 +1,19 @@
 defmodule CurlReq do
+  @req_version :application.get_key(:req, :vsn) |> elem(1)
+  defstruct cookies: nil,
+            headers: [],
+            user_agent: "req/#{@req_version}",
+            method: :get,
+            redirect: false,
+            data: nil,
+            auth: nil,
+            compression: false
+
   @external_resource "README.md"
   @moduledoc @external_resource
              |> File.read!()
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
-
-  @req_version :application.get_key(:req, :vsn) |> elem(1)
 
   @doc false
   def req_version(), do: @req_version
@@ -83,6 +91,50 @@ defmodule CurlReq do
     mode = Keyword.get(options, :mode, :curl)
     run_steps? = Keyword.get(options, :run_steps, true)
 
+    curl_req = %__MODULE__{}
+
+    redirect = Map.get(req.options, :redirect, false)
+    compression = Map.get(req.options, :compression, true)
+    auth = Map.get(req.options, :auth, nil)
+
+    dbg(req.method)
+
+    curl_req =
+      %__MODULE__{
+        curl_req
+        | auth: auth,
+          compression: compression,
+          redirect: redirect,
+          data: req.body,
+          method: req.method
+      }
+
+    curl_req =
+      Enum.reduce(req.headers, curl_req, fn
+        {"cookie", [cookies]}, curl_req ->
+          %__MODULE__{curl_req | cookies: cookies}
+
+        {"authorization", ["Bearer " <> token]}, curl_req ->
+          %__MODULE__{curl_req | auth: {:bearer, token}}
+
+        {"authorization", ["Basic " <> credentials]}, curl_req ->
+          %__MODULE__{curl_req | auth: {:basic, credentials}}
+
+        {"user-agent", ["req/" <> _]}, curl_req ->
+          curl_req
+
+        {"user-agent", [agent]}, curl_req ->
+          %__MODULE__{curl_req | user_agent: agent}
+
+        {"accept-encoding", [compression]}, curl_req when compression in ["gzip", "br", "zstd"] ->
+          %__MODULE__{curl_req | compression: true}
+
+        {key, value}, curl_req ->
+          %__MODULE__{curl_req | headers: ["#{key}: #{value}" | curl_req.headers]}
+      end)
+
+    dbg(curl_req)
+
     req =
       if run_steps? do
         run_steps(req)
@@ -90,51 +142,11 @@ defmodule CurlReq do
         req
       end
 
-    cookies =
-      case Map.get(req.headers, "cookie") do
-        nil -> []
-        [cookies] -> [cookie_flag(flag_style), cookies]
-      end
-
-    headers =
-      req.headers
-      |> Enum.reject(fn {key, _val} -> key == "cookie" end)
-      |> Enum.flat_map(&map_header(&1, flag_style, mode))
-
-    body =
-      case req.body do
-        nil -> []
-        body -> [data_flag(flag_style), body]
-      end
-
-    options =
-      case req.options do
-        %{redirect: true} ->
-          [location_flag(flag_style)]
-
-        # avoids duplicate compression argument
-        %{compressed: true} ->
-          if run_steps?, do: [], else: [compressed_flag()]
-
-        %{auth: {:basic, credentials}} ->
-          [user_flag(flag_style), credentials] ++ [basic_auth_flag()]
-
-        _ ->
-          []
-      end
-
-    method =
-      case req.method do
-        nil -> [request_flag(flag_style), "GET"]
-        :head -> [head_flag(flag_style)]
-        m -> [request_flag(flag_style), String.upcase(to_string(m))]
-      end
-
     url = [to_string(req.url)]
 
     CurlReq.Shell.cmd_to_string(
       "curl",
-      headers ++ cookies ++ body ++ options ++ method ++ url
+      url
     )
   end
 
