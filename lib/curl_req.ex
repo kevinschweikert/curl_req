@@ -1,12 +1,15 @@
 defmodule CurlReq do
   @req_version :application.get_key(:req, :vsn) |> elem(1)
 
-  @flag_docs CurlReq.Curl.flags()
-             |> Enum.map(fn
-               {long, nil} -> "* `--#{long}`"
-               {long, short} -> "* `--#{long}`/`-#{short}`"
-             end)
-             |> Enum.join("\n")
+  @flag_docs """
+  | Long | Short | Doc |
+  | --- | --- | --- |
+  #{CurlReq.Curl.flags() |> Enum.map(fn flag -> if is_nil(flag[:short]) do
+      "| --#{flag[:long]} |  | #{flag[:doc]} |"
+    else
+      "| --#{flag[:long]} | -#{flag[:short]} | #{flag[:doc]} |"
+    end end) |> Enum.join("\n")}
+  """
 
   @doc false
   def req_version(), do: @req_version

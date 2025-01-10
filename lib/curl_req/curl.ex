@@ -5,41 +5,40 @@ defmodule CurlReq.Curl do
 
   @behaviour CurlReq.Request
 
+  defmodule Flag do
+    defstruct [:short, :long, :type, :doc]
+  end
+
   @flags [
-    header: :keep,
-    request: :string,
-    data: :keep,
-    data_raw: :keep,
-    data_ascii: :keep,
-    cookie: :string,
-    head: :boolean,
-    form: :keep,
-    location: :boolean,
-    user: :string,
-    compressed: :boolean,
-    proxy: :string,
-    proxy_user: :string,
-    netrc: :boolean,
-    netrc_file: :string,
-    insecure: :boolean,
-    user_agent: :string
+    [long: :header, short: :H, type: :keep, doc: "HTTP Header flag"],
+    [long: :request, short: :X, type: :string, doc: "Specify request method"],
+    [long: :data, short: :d, type: :keep, doc: "HTTP POST data"],
+    [long: :data_raw, short: nil, type: :keep, doc: "Raw HTTP POST data"],
+    [long: :data_ascii, short: nil, type: :keep, doc: "ASCII HTTP POST data"],
+    [long: :cookie, short: :b, type: :string, doc: "Cookie string"],
+    [long: :head, short: :I, type: :boolean, doc: "Show document info only"],
+    [long: :form, short: :F, type: :keep, doc: "Specify HTTP multipart POST data"],
+    [long: :location, short: :L, type: :boolean, doc: "Follow redirects"],
+    [long: :user, short: :u, type: :string, doc: "Server user and password"],
+    [long: :compressed, short: nil, type: :boolean, doc: "Request compressed response"],
+    [long: :proxy, short: :x, type: :string, doc: "Use proxy"],
+    [long: :proxy_user, short: :U, type: :string, doc: "Proxy user and password"],
+    [long: :netrc, short: :n, type: :boolean, doc: "Must read .netrc for user/password"],
+    [long: :netrc_file, short: nil, type: :string, doc: "Specify alternative .netrc file"],
+    [long: :insecure, short: :k, type: :boolean, doc: "Allow insecure server connections"],
+    [long: :user_agent, short: :A, type: :string, doc: "Send User-Agent string"]
   ]
 
-  @aliases [
-    H: :header,
-    X: :request,
-    d: :data,
-    b: :cookie,
-    I: :head,
-    F: :form,
-    L: :location,
-    u: :user,
-    x: :proxy,
-    U: :proxy_user,
-    n: :netrc,
-    k: :insecure,
-    A: :user_agent
-  ]
+  def options() do
+    @flags
+    |> Enum.map(fn flag -> {flag[:long], flag[:type]} end)
+  end
+
+  def aliases() do
+    @flags
+    |> Enum.map(fn flag -> {flag[:short], flag[:long]} end)
+    |> Enum.reject(fn {short, _} -> is_nil(short) end)
+  end
 
   @doc """
   Lists supported flags for the cURL command
@@ -60,14 +59,7 @@ defmodule CurlReq.Curl do
   """
   @spec flags() :: [{atom(), atom() | nil}]
   def flags do
-    long = Keyword.keys(@flags)
-
-    short_lookup =
-      Enum.map(@aliases, fn {short, long} -> {long, short} end) |> Enum.into(%{})
-
-    Enum.map(long, fn flag ->
-      {flag, short_lookup[flag]}
-    end)
+    @flags
   end
 
   @impl CurlReq.Request
@@ -83,8 +75,8 @@ defmodule CurlReq.Curl do
       command
       |> OptionParser.split()
       |> OptionParser.parse(
-        strict: @flags,
-        aliases: @aliases
+        strict: options(),
+        aliases: aliases()
       )
 
     if invalid != [] do
