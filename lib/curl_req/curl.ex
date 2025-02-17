@@ -28,7 +28,9 @@ defmodule CurlReq.Curl do
     show_error: :boolean,
     output: :string,
     remote_name: :boolean,
-    verbose: :boolean
+    verbose: :boolean,
+    ipv4: :boolean,
+    ipv6: :boolean
   ]
 
   @aliases [
@@ -383,12 +385,20 @@ defmodule CurlReq.Curl do
 
     insecure = if request.insecure, do: [insecure_flag(flag_style)], else: []
 
+    ip_version =
+      case request.ip_version do
+        [:v4] -> []
+        [:v6] -> [ip_version_flag(flag_style, :v6)]
+        [:v4, :v6] -> [ip_version_flag(flag_style, :v4), ip_version_flag(flag_style, :v6)]
+      end
+
     url = [" ", to_string(request.url)]
 
     IO.iodata_to_binary([
       "curl",
       compressed,
       insecure,
+      ip_version,
       auth,
       headers,
       user_agent,
@@ -457,4 +467,9 @@ defmodule CurlReq.Curl do
 
   defp user_agent_flag(:short, value), do: [" -A ", escape(value)]
   defp user_agent_flag(:long, value), do: [" --user-agent ", escape(value)]
+
+  defp ip_version_flag(:short, :v4), do: " -4"
+  defp ip_version_flag(:short, :v6), do: " -6"
+  defp ip_version_flag(:long, :v4), do: " --ipv4"
+  defp ip_version_flag(:long, :v6), do: " --ipv6"
 end

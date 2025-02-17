@@ -24,7 +24,8 @@ defmodule CurlReq.Request do
           encoding: encoding(),
           body: term(),
           raw_body: String.t(),
-          insecure: boolean()
+          insecure: boolean(),
+          ip_version: [ip_version()]
         }
 
   @type user_agent() :: :curl | :req | String.t()
@@ -35,6 +36,7 @@ defmodule CurlReq.Request do
   @type encoding() :: :raw | :form | :json
   @type method() :: :get | :head | :put | :post | :delete | :patch
   @type compression() :: :none | :gzip | :br | :zstd
+  @type ip_version() :: :v4 | :v6
 
   @derive {Inspect, except: [:auth]}
   defstruct user_agent: :curl,
@@ -51,7 +53,8 @@ defmodule CurlReq.Request do
             encoding: :raw,
             body: nil,
             raw_body: nil,
-            insecure: false
+            insecure: false,
+            ip_version: [:v4]
 
   @doc """
   Puts the header into the CurlReq.Request struct. Special headers like encoding, authorization or user-agent are stored in their respective field in the #{__MODULE__} struct instead of a general header.

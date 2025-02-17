@@ -90,6 +90,8 @@ The following flags are supported in all directions (from Req, from cURL, to Req
 | `--netrc_file` |       |                                |
 | `--insecure`   | `-k`  |                                |
 | `--user_agent` | `-A`  |                                |
+| `--ipv4` | `-4`  | Short form raises                               |
+| `--ipv6` | `-6`  | Short form raises                               |
 
 ### Ignored flags
 

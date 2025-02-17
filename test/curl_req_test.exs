@@ -227,6 +227,15 @@ defmodule CurlReqTest do
                )
                |> CurlReq.to_curl(flags: :long)
     end
+
+    test "IP version" do
+      assert ~s(curl --compressed -6 -X GET http://example.com) ==
+               Req.new(
+                 url: "http://example.com",
+                 inet6: true
+               )
+               |> CurlReq.to_curl()
+    end
   end
 
   describe "from_curl" do
@@ -645,6 +654,22 @@ defmodule CurlReqTest do
                %Req.Request{
                  url: URI.parse("http://example.com"),
                  headers: %{"user-agent" => ["some_user_agent/0.1.0"]}
+               }
+    end
+
+    test "IP version" do
+      assert ~CURL(curl --ipv4 -X GET http://example.com) ==
+               %Req.Request{
+                 url: URI.parse("http://example.com")
+               }
+
+      assert ~CURL(curl --ipv6 -X GET http://example.com) ==
+               %Req.Request{
+                 url: URI.parse("http://example.com"),
+                 registered_options: MapSet.new([:connect_options]),
+                 options: %{
+                   connect_options: [transport_opts: [inet6: true]]
+                 }
                }
     end
   end
